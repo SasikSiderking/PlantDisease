@@ -26,13 +26,13 @@ class TomatoDiseaseClassifier(private val context: Context) {
 
             val options = ImageClassifier.ImageClassifierOptions.builder()
                 .setBaseOptions(baseOptions)
-                .setMaxResults(3) // Показывать топ-3 результата
-                .setScoreThreshold(0.5f) // Минимальный порог уверенности
+//                .setMaxResults(3) // Показывать топ-3 результата
+                .setScoreThreshold(0.01f) // Минимальный порог уверенности
                 .build()
 
             classifier = ImageClassifier.createFromFileAndOptions(
                 context,
-                "plant_disease_model.tflite",
+                "plant_disease_model_with_metadata.tflite",
                 options
             )
         } catch (e: Exception) {

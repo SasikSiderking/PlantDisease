@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -36,10 +37,12 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
             }
 
             result.onSuccess {
+                Log.i("Abobus Success", "${it}")
                 _uiState.value = _uiState.value.copy(predictions = it.take(3).map { it.first })
             }
 
             result.onFailure {
+                Log.i("Abobus Failure", "${it}")
                 _uiState.value = _uiState.value.copy(error = it.message)
             }
         }

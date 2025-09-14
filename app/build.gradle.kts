@@ -21,8 +21,17 @@ android {
     }
 
     buildTypes {
+
+        debug {
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -42,6 +51,20 @@ android {
     fun AndroidResources.() {
         noCompress.add("tflite")
     }
+
+    applicationVariants.all {
+        this.outputs
+            .map { it as com.android.build.gradle.internal.api.ApkVariantOutputImpl }
+            .forEach { output ->
+                val variant = this.buildType.name
+                var apkName = "Классификатор болезни томатов" + "_" + this.versionName
+                if (variant.isNotEmpty()) {
+                    apkName += "_$variant"
+                }
+                apkName += ".apk"
+                output.outputFileName = apkName
+            }
+    }
 }
 
 dependencies {
@@ -55,13 +78,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation(libs.coil)
 
