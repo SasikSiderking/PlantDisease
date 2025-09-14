@@ -1,7 +1,9 @@
 package sasik.siderking.plantdisease
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -15,23 +17,33 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import sasik.siderking.plantdisease.ui.theme.PlantDiseaseTheme
 import java.io.File
@@ -45,9 +57,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PlantDiseaseTheme {
+                val viewModel: MainActivityViewModel = viewModel()
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     ImagePickerScreen(
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        viewModel = viewModel
                     )
                 }
             }
@@ -56,9 +70,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ImagePickerScreen(modifier: Modifier = Modifier) {
+fun ImagePickerScreen(modifier: Modifier = Modifier, viewModel: MainActivityViewModel) {
     val context = LocalContext.current
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    val uiState by viewModel.uiState.collectAsState()
 
     // Создаем временный файл для фото
     val tempPhotoFile = remember {
@@ -79,7 +93,26 @@ fun ImagePickerScreen(modifier: Modifier = Modifier) {
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val uri = result.data?.data ?: tempPhotoUri
-            imageUri = uri
+            viewModel.setImageUri(uri)
+        }
+    }
+
+    // Лаунчер для разрешений
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.all { it.value }
+        if (allGranted) {
+            showImagePicker(imagePickerLauncher, tempPhotoUri)
+        }
+    }
+
+    LaunchedEffect(null) {
+        if (hasPermissions(context).not()){
+            permissionLauncher.launch(arrayOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ))
         }
     }
 
@@ -91,7 +124,7 @@ fun ImagePickerScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center
     ) {
         // Отображение выбранного изображения
-        imageUri?.let { uri ->
+        uiState.imageUri?.let { uri ->
             Image(
                 painter = rememberAsyncImagePainter(uri),
                 contentDescription = "Selected image",
@@ -102,19 +135,52 @@ fun ImagePickerScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        uiState.predictions?.let { predictions ->
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                itemsIndexed(predictions) { index, prediction ->
+                    Text(
+                        text = "${index+1}) $prediction"
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
         // Кнопка для выбора изображения
         Button(
             onClick = {
-                showImagePicker(context, imagePickerLauncher, tempPhotoUri)
+                showImagePicker(imagePickerLauncher, tempPhotoUri)
             }
         ) {
             Text("Выбрать изображение")
         }
     }
+
+    uiState.error?.let {
+        Dialog(
+            onDismissRequest = { viewModel.setErrorWasShown() },
+        ) {
+            Text(text = it)
+        }
+    }
+}
+
+private fun hasPermissions(context: Context): Boolean {
+    return ContextCompat.checkSelfPermission(
+        context, Manifest.permission.CAMERA
+    ) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
 }
 
 private fun showImagePicker(
-    context: Context,
     launcher: ActivityResultLauncher<Intent>,
     tempPhotoUri: Uri
 ) {
@@ -151,5 +217,6 @@ private fun createImageFile(context: Context): File {
 @Composable
 fun GreetingPreview() {
     PlantDiseaseTheme {
+//        ImagePickerScreen()
     }
 }
