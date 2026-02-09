@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -52,6 +53,9 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+
+    var viewModel: MainActivityViewModel? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -67,6 +71,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onDestroy() {
+        viewModel?.onDestroy()
+        super.onDestroy()
+    }
 }
 
 @Composable
@@ -74,7 +83,6 @@ fun ImagePickerScreen(modifier: Modifier = Modifier, viewModel: MainActivityView
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    // Создаем временный файл для фото
     val tempPhotoFile = remember {
         createImageFile(context)
     }
@@ -87,7 +95,6 @@ fun ImagePickerScreen(modifier: Modifier = Modifier, viewModel: MainActivityView
         )
     }
 
-    // Лаунчер для выбора изображения
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -97,7 +104,6 @@ fun ImagePickerScreen(modifier: Modifier = Modifier, viewModel: MainActivityView
         }
     }
 
-    // Лаунчер для разрешений
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -123,7 +129,6 @@ fun ImagePickerScreen(modifier: Modifier = Modifier, viewModel: MainActivityView
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Отображение выбранного изображения
         uiState.imageUri?.let { uri ->
             Image(
                 painter = rememberAsyncImagePainter(uri),
@@ -152,13 +157,12 @@ fun ImagePickerScreen(modifier: Modifier = Modifier, viewModel: MainActivityView
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Кнопка для выбора изображения
         Button(
             onClick = {
                 showImagePicker(imagePickerLauncher, tempPhotoUri)
             }
         ) {
-            Text("Выбрать изображение")
+            Text(stringResource(R.string.choose_image))
         }
     }
 
@@ -184,18 +188,15 @@ private fun showImagePicker(
     launcher: ActivityResultLauncher<Intent>,
     tempPhotoUri: Uri
 ) {
-    // Intent для камеры
     val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
         putExtra(MediaStore.EXTRA_OUTPUT, tempPhotoUri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
-    // Intent для галереи
     val galleryIntent = Intent(Intent.ACTION_PICK).apply {
         type = "image/*"
     }
 
-    // Создаем chooser intent с обоими вариантами
     val chooserIntent = Intent.createChooser(galleryIntent, "Выберите изображение").apply {
         putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(cameraIntent))
     }

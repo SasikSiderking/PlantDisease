@@ -47,6 +47,7 @@ android {
     }
     buildFeatures {
         compose = true
+        mlModelBinding = true
     }
     fun AndroidResources.() {
         noCompress.add("tflite")

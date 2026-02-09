@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">PlantDisease</string>
+    <string name="choose_image">Выбрать изображение</string>
+    <string name="chooser_title">"Выберите изображение"</string>
 </resources>

@@ -54,6 +54,10 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    fun onDestroy() {
+        plantDiseaseClassifier.close()
+    }
+
     private fun loadBitmapFromUri(uri: Uri): Bitmap? {
         var bitmap: Bitmap? = null
         val inputStream: InputStream? = applicationContext.contentResolver.openInputStream(uri)
