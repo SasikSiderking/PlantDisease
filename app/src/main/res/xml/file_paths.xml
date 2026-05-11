@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-files-path name="my_images" path="Pictures/" />
-    <cache-path name="my_cache" path="/" />
+    <!-- Для временных файлов камеры -->
+    <external-files-path
+        name="external_files"
+        path="Pictures" />
+
+    <!-- Для кэша -->
+    <cache-path
+        name="cache"
+        path="." />
+
+    <!-- Для файлов во внутреннем хранилище -->
+    <files-path
+        name="files"
+        path="." />
+
+    <!-- Для внешнего кэша -->
+    <external-cache-path
+        name="external_cache"
+        path="." />
 </paths>

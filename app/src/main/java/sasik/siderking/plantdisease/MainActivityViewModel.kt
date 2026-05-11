@@ -38,13 +38,19 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
 
             result.onSuccess {
                 Log.i("Abobus Success", "${it}")
-                _uiState.value = _uiState.value.copy(predictions = it.take(3).map { it.first })
+                _uiState.value = _uiState.value.copy(predictions = it.take(3).map { it.first + "-" + "%.2f%%".format(it.second * 100) })
             }
 
             result.onFailure {
                 Log.i("Abobus Failure", "${it}")
                 _uiState.value = _uiState.value.copy(error = it.message)
             }
+        }
+    }
+
+    fun setError(errorMessage: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(error = errorMessage)
         }
     }
 
@@ -56,6 +62,11 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
 
     fun onDestroy() {
         plantDiseaseClassifier.close()
+    }
+
+    override fun onCleared() {
+        plantDiseaseClassifier.close()
+        super.onCleared()
     }
 
     private fun loadBitmapFromUri(uri: Uri): Bitmap? {

@@ -57,7 +57,7 @@ class TomatoDiseaseClassifier(private val context: Context) {
 
             classifier = ImageClassifier.createFromFileAndOptions(
                 context,
-                "plant_disease_model_tuned.tflite",
+                "plant_disease_model_generated.tflite",
                 options
             )
         } catch (e: Exception) {
