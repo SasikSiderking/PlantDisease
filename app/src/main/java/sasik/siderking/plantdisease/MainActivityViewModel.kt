@@ -1,5 +1,6 @@
 package sasik.siderking.plantdisease
 
+import TomatoDiseaseClassifier
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
