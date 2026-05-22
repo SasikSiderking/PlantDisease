@@ -1,6 +1,7 @@
 package sasik.siderking.plantdisease
 
 import TomatoDiseaseClassifier
+import TomatoLeafDetector
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -19,6 +20,7 @@ import java.io.InputStream
 class MainActivityViewModel(application: Application) : AndroidViewModel(application) {
     private val applicationContext = application.applicationContext
     private val plantDiseaseClassifier = TomatoDiseaseClassifier(applicationContext)
+    private val leafDetector = TomatoLeafDetector(applicationContext)
     private val _uiState = MutableStateFlow(ImagePickerUiState())
     val uiState: StateFlow<ImagePickerUiState> = _uiState.asStateFlow()
 
@@ -29,7 +31,8 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
             val result = withContext(Dispatchers.IO) {
                 try {
                     uri?.let { loadBitmapFromUri(it) }?.let {
-                        val classification = plantDiseaseClassifier.classify(it)
+                        val croppedLeafBitmap = leafDetector.detectAndCropLeaf(it)
+                        val classification = plantDiseaseClassifier.classify(croppedLeafBitmap)
                         Result.success(classification)
                     } ?: Result.failure(Throwable(message = "Ошибка при получепнии изображения"))
                 } catch (e: Exception) {
