@@ -9,6 +9,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.InputStream
+import java.time.LocalDateTime
 
 class MainActivityViewModel(application: Application) : AndroidViewModel(application) {
     private val applicationContext = application.applicationContext
@@ -41,6 +43,8 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
 
         val uiState: StateFlow<ImagePickerUiState> = _uiState.asStateFlow()
 
+    var startTime: Long = 0L
+
     fun setImageUri(uri: Uri?) {
         if (uri == null) return
 
@@ -51,9 +55,9 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
                 try {
                     val originalBitmap = loadBitmapFromUri(uri)
                         ?: return@withContext Result.failure(Throwable("Не удалось загрузить изображение"))
-
+                    startTime = System.currentTimeMillis()
                     val leafBoxes = leafDetector.detectLeaves(originalBitmap)
-
+                    Log.e("Abobus", "Detection time: ${System.currentTimeMillis() - startTime}")
                     if (leafBoxes.isEmpty()) {
                         return@withContext Result.failure(Throwable("Листья на фото не обнаружены"))
                     }
@@ -104,7 +108,7 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
                             val croppedLeaf = Bitmap.createBitmap(originalBitmap, cropLeft, cropTop, cropWidth, cropHeight)
 
                             val classifications = plantDiseaseClassifier.classify(croppedLeaf)
-
+                            Log.e("Abobus", "Classificetion ${index} time: ${System.currentTimeMillis() - startTime}")
                             val topPrediction = classifications.firstOrNull()
                             if (topPrediction != null) {
                                 resultsList.add(
@@ -138,6 +142,8 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
                     error = it.message ?: "Неизвестная ошибка"
                 )
             }
+
+            Log.e("Abobus", "Show result time: ${System.currentTimeMillis() - startTime}")
         }
     }
 
