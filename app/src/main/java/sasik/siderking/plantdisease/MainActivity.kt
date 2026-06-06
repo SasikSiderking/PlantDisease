@@ -90,7 +90,6 @@ private fun ImagePickerScreen(
     setErrorWasShown: () -> Unit,
     setError: (errorMsg: String) -> Unit
 ) {
-    Log.e("Abobus", "sus")
     val context = LocalContext.current
     val isPreview = LocalInspectionMode.current
 

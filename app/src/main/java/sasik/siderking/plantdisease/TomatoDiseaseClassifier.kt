@@ -27,22 +27,18 @@ class TomatoDiseaseClassifier(private val context: Context) {
 
     fun classify(bitmap: Bitmap): List<Pair<String, Float>> {
         if (classifier == null) {
-            return listOf("Модель не загружена" to 0f)
+            throw Exception("Модель не загружена")
         }
 
-        return try {
-            var tensorImage = TensorImage.fromBitmap(bitmap)
 
-            tensorImage = imageProcessor.process(tensorImage)
+        var tensorImage = TensorImage.fromBitmap(bitmap)
 
-            val results = classifier!!.classify(tensorImage)
+        tensorImage = imageProcessor.process(tensorImage)
 
-            processResults(results)
-        } catch (e: Exception) {
-            Log.e("TomatoClassifier", "Ошибка классификации: ${e.message}")
-            e.printStackTrace()
-            listOf("Ошибка классификации" to 0f)
-        }
+        val results = classifier!!.classify(tensorImage)
+
+        return processResults(results)
+
     }
 
     fun close() {

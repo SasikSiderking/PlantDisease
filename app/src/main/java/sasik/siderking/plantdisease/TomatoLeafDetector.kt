@@ -3,6 +3,7 @@ import android.graphics.Bitmap
 import android.graphics.RectF
 import android.util.Log
 import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
@@ -20,6 +21,7 @@ class TomatoLeafDetector(private val context: Context) {
             .add(NormalizeOp(0f, 255f))
             .build()
     }
+    private var gpuDelegate: GpuDelegate? = null
 
     init {
         loadModel()
@@ -32,10 +34,24 @@ class TomatoLeafDetector(private val context: Context) {
             val fileChannel = inputStream.channel
             val startOffset = fileDescriptor.startOffset
             val declaredLength = fileDescriptor.declaredLength
-            val modelBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+            val modelBuffer =
+                fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
 
             val options = Interpreter.Options().apply {
-                setNumThreads(4)
+                try {
+                    val delegateOptions = GpuDelegate.Options().apply {
+                        setQuantizedModelsAllowed(true)
+                    }
+                    gpuDelegate = GpuDelegate(delegateOptions)
+                    addDelegate(gpuDelegate)
+                    Log.i("LeafDetector", "GPU делегат успешно добавлен.")
+                } catch (e: Exception) {
+                    Log.w(
+                        "LeafDetector",
+                        "GPU не поддерживается на этом устройстве, откат на CPU: ${e.message}"
+                    )
+                    setNumThreads(4)
+                }
             }
             interpreter = Interpreter(modelBuffer, options)
             Log.i("LeafDetector", "Interpreter детектора успешно инициализирован.")
@@ -88,5 +104,7 @@ class TomatoLeafDetector(private val context: Context) {
     fun close() {
         interpreter?.close()
         interpreter = null
+        gpuDelegate?.close()
+        gpuDelegate = null
     }
 }

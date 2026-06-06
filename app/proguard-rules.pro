@@ -22,3 +22,9 @@
 
 -dontwarn com.google.auto.value.AutoValue$Builder
 -dontwarn com.google.auto.value.AutoValue
+
+# Сохраняем все классы TensorFlow Lite от удаления и переименования
+-keep class org.tensorflow.lite.** { *; }
+
+# Явно запрещаем R8 ругаться на отсутствие некоторых фабричных интерфейсов делегата
+-dontwarn org.tensorflow.lite.gpu.**

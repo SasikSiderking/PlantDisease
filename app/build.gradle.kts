@@ -83,6 +83,9 @@ dependencies {
     implementation(libs.coil)
 
     implementation(libs.tensorflow.lite)
+    implementation(libs.tensorflow.lite.gpu)
+    implementation(libs.tensorflow.lite.gpu.api)
+    implementation(libs.tensorflow.tsk.gpu)
     implementation(libs.tensorflow.vision)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
