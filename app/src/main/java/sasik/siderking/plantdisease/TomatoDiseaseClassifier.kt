@@ -14,8 +14,6 @@ class TomatoDiseaseClassifier(private val context: Context) {
     private var classifier: ImageClassifier? = null
     private var labels: List<String> = emptyList()
 
-    // Оставляем ТОЛЬКО изменение размера.
-    // Нормализацию ImageClassifier сделает сам на основе метаданных модели!
     private val imageProcessor by lazy {
         ImageProcessor.Builder()
             .add(ResizeOp(224, 224, ResizeOp.ResizeMethod.BILINEAR))
@@ -33,17 +31,12 @@ class TomatoDiseaseClassifier(private val context: Context) {
         }
 
         return try {
-            // 1. Конвертируем Bitmap (важно: модель ожидает RGB, из ARGB_8888 альфа-канал отсечется автоматически)
             var tensorImage = TensorImage.fromBitmap(bitmap)
 
-            // 2. Только изменяем размер до 224x224
             tensorImage = imageProcessor.process(tensorImage)
 
-            // 3. Классифицируем. Внутри этого метода автоматически сработает
-            // нормализация по зашитым в метаданные коэффициентам [123.675, 116.28, 103.53]
             val results = classifier!!.classify(tensorImage)
 
-            // 4. Считаем Softmax для логитов
             processResults(results)
         } catch (e: Exception) {
             Log.e("TomatoClassifier", "Ошибка классификации: ${e.message}")
@@ -97,18 +90,14 @@ class TomatoDiseaseClassifier(private val context: Context) {
             val categories = classification.categories
             if (categories.isEmpty()) continue
 
-            // Извлекаем сырые логиты
             val logits = categories.map { it.score }
 
-            // Считаем Softmax
             val maxLogit = logits.maxOrNull() ?: 0f
             val exps = logits.map { exp(it - maxLogit) }
             val sumExps = exps.sum()
             val probabilities = exps.map { it / sumExps }
 
             categories.forEachIndexed { index, category ->
-                // Берем имя строго по индексу из локального файла labels,
-                // игнорируя то, что зашито внутри .tflite метаданных
                 val label = if (category.index < labels.size) {
                     labels[category.index]
                 } else {

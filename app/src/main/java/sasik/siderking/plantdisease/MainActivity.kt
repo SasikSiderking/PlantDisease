@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
@@ -16,14 +17,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -36,15 +32,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,17 +49,12 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.rememberAsyncImagePainter
 import sasik.siderking.plantdisease.ui.theme.PlantDiseaseTheme
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.cos
-import kotlin.math.sin
 
 class MainActivity : ComponentActivity() {
-
-    private val viewModel: MainActivityViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImagePickerScreen(
+private fun ImagePickerScreen(
     modifier: Modifier = Modifier,
     uiState: ImagePickerUiState,
     setImageUri: (uri: Uri) -> Unit,
@@ -105,14 +93,6 @@ fun ImagePickerScreen(
     Log.e("Abobus", "sus")
     val context = LocalContext.current
     val isPreview = LocalInspectionMode.current
-    val infiniteTransition = rememberInfiniteTransition()
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(10000, easing = LinearEasing)
-        )
-    )
 
     val tempPhotoFile = remember {
         if (!isPreview) createImageFile(context) else null
@@ -143,10 +123,8 @@ fun ImagePickerScreen(
         val allGranted = permissions.all { it.value }
 
         if (allGranted) {
-            // Разрешения получены, показываем выбор
             showImagePicker(imagePickerLauncher, tempPhotoUri)
         } else {
-            // Показываем объяснение, почему нужны разрешения
             val deniedPermissions = permissions.filter { !it.value }.keys
             if (deniedPermissions.isNotEmpty()) {
                 setError("Для работы приложению нужны разрешения: ${deniedPermissions}")
@@ -176,9 +154,7 @@ fun ImagePickerScreen(
                 )
             )
     ) {
-        // Анимированный фоновый узор
         if (!isPreview) {
-//            AnimatedBackgroundPattern(rotation)
         }
 
         Column(
@@ -188,7 +164,6 @@ fun ImagePickerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // Заголовок
             Text(
                 text = "🌱 Определитель болезней томатов",
                 fontSize = 24.sp,
@@ -199,18 +174,17 @@ fun ImagePickerScreen(
             )
 
             Text(
-                text = "Сфотографируйте или выберите фото листка томата для диагностики",
+                text = stringResource(R.string.title_description),
                 fontSize = 14.sp,
                 color = Color(0xFF546E7A),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Область изображения
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (uiState.imageUri != null) 280.dp else 200.dp),
+                    .height(if (uiState.processedBitmap != null) 280.dp else 200.dp),
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 colors = CardDefaults.cardColors(
@@ -222,18 +196,16 @@ fun ImagePickerScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (uiState.imageUri != null) {
-                        // Отображаем выбранное изображение
-                        Image(
-                            painter = rememberAsyncImagePainter(uiState.imageUri),
-                            contentDescription = "Selected image",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(24.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                    if (uiState.processedBitmap != null) {
+                            Image(
+                                bitmap = uiState.processedBitmap.asImageBitmap(),
+                                contentDescription = "Selected image",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(24.dp)),
+                                contentScale = ContentScale.Fit
+                            )
 
-                        // Кнопка замены изображения
                         IconButton(
                             onClick = {
                                 if (hasPermissions(context)) {
@@ -256,7 +228,6 @@ fun ImagePickerScreen(
                             )
                         }
                     } else {
-                        // Пустое состояние с иконкой
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
@@ -269,7 +240,7 @@ fun ImagePickerScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Изображение не выбрано",
+                                text = stringResource(R.string.image_not_chosen),
                                 color = Color(0xFF9E9E9E),
                                 fontSize = 14.sp
                             )
@@ -280,7 +251,6 @@ fun ImagePickerScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Индикатор загрузки
             if (uiState.isLoading) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -303,13 +273,13 @@ fun ImagePickerScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Анализируем изображение...",
+                            text = stringResource(R.string.processing),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color(0xFF2E7D32)
                         )
                         Text(
-                            text = "Это может занять несколько секунд",
+                            text = stringResource(R.string.take_your_time),
                             fontSize = 12.sp,
                             color = Color(0xFF9E9E9E),
                             modifier = Modifier.padding(top = 4.dp)
@@ -318,8 +288,7 @@ fun ImagePickerScreen(
                 }
             }
 
-            // Результаты предсказаний
-            uiState.predictions?.let { predictions ->
+            if (uiState.leafResults.isNotEmpty()) {
                 AnimatedVisibility(
                     visible = true,
                     enter = fadeIn() + slideInVertically()
@@ -346,7 +315,7 @@ fun ImagePickerScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Результаты диагностики",
+                                    text = stringResource(R.string.results),
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF2E7D32)
@@ -359,8 +328,8 @@ fun ImagePickerScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                itemsIndexed(predictions) { index, prediction ->
-                                    PredictionCard(index, prediction)
+                                itemsIndexed(uiState.leafResults) { index, result ->
+                                    PredictionCard(index, result)
                                 }
                             }
                         }
@@ -370,7 +339,6 @@ fun ImagePickerScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Кнопка выбора изображения
             Button(
                 onClick = {
                     Log.e("Abobus", "click!")
@@ -408,7 +376,6 @@ fun ImagePickerScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Диалог ошибки
         uiState.error?.let {
             CustomErrorDialog(
                 error = it,
@@ -419,21 +386,14 @@ fun ImagePickerScreen(
 }
 
 @Composable
-fun PredictionCard(index: Int, prediction: String) {
-    val colors = listOf(
-        Color(0xFFFFEBEE), // Красноватый
-        Color(0xFFE8F5E9), // Зеленоватый
-        Color(0xFFE3F2FD), // Синеватый
-        Color(0xFFFFF3E0)  // Оранжеватый
-    )
+fun PredictionCard(index: Int, prediction: LeafResult) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = colors[index % colors.size]
+            containerColor = prediction.itemColor
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -442,7 +402,7 @@ fun PredictionCard(index: Int, prediction: String) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "${index + 1}",
+                text = prediction.id.toString(),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF2E7D32),
@@ -453,16 +413,10 @@ fun PredictionCard(index: Int, prediction: String) {
             )
             Spacer(modifier = Modifier.width(16.dp))
             Text(
-                text = prediction,
+                text = prediction.diseaseName,
                 fontSize = 15.sp,
                 color = Color(0xFF37474F),
                 modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = Color(0xFF4CAF50),
-                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -501,7 +455,7 @@ fun CustomErrorDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Ошибка",
+                    text = stringResource(R.string.understood),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFD32F2F)
@@ -529,55 +483,6 @@ fun CustomErrorDialog(
     }
 }
 
-@Composable
-fun AnimatedBackgroundPattern(rotation: Float) {
-    val patternColor = Color(0xFFC8E6C9).copy(alpha = 0.3f)
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val radius = size.minDimension / 3f
-        val centerX = size.width / 2f
-        val centerY = size.height / 2f
-
-        for (i in 0..12) {
-            val angle = (i * 30f + rotation) * Math.PI / 180f
-            val x = centerX + radius * 1.5f * cos(angle).toFloat()
-            val y = centerY + radius * 1.5f * sin(angle).toFloat()
-
-            drawCircle(
-                color = patternColor,
-                radius = radius / 4f,
-                center = Offset(x, y)
-            )
-        }
-    }
-}
-
-@Composable
-fun AnimatedLoadingIndicator() {
-    val infiniteTransition = rememberInfiniteTransition()
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-
-    Box(
-        modifier = Modifier.size(80.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier
-                .fillMaxSize()
-                .scale(scale),
-            color = Color(0xFF4CAF50),
-            strokeWidth = 4.dp
-        )
-    }
-}
-
 private fun hasPermissions(context: Context): Boolean {
     val permissions = getRequiredPermissions()
     Log.e("Abobus", "permissions ${permissions}")
@@ -593,21 +498,21 @@ private fun hasPermissions(context: Context): Boolean {
 
 private fun getRequiredPermissions(): List<String> {
     return when {
-        android.os.Build.VERSION.SDK_INT >= 33 -> {
+        Build.VERSION.SDK_INT >= 33 -> {
             listOf(
                 Manifest.permission.CAMERA,
-                Manifest.permission.READ_MEDIA_IMAGES  // Новое разрешение для Android 13+
+                Manifest.permission.READ_MEDIA_IMAGES
             )
         }
 
-        android.os.Build.VERSION.SDK_INT >= 29 -> {
+        Build.VERSION.SDK_INT >= 29 -> {
             listOf(
                 Manifest.permission.CAMERA,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             )
         }
 
-        else -> { // Android 9 и ниже
+        else -> {
             listOf(
                 Manifest.permission.CAMERA,
                 Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -654,13 +559,25 @@ fun GreetingPreview() {
         ImagePickerScreen(
             modifier = Modifier,
             uiState = ImagePickerUiState(
-                imageUri = null,
+                processedBitmap = null,
                 isLoading = false,
-                predictions = listOf(
-                    "Ржавчина листьев - 94%",
-                    "Мучнистая роса - 87%",
-                    "Пятнистость листьев - 76%",
-                    "Корневая гниль - 45%"
+                leafResults = listOf(
+                    LeafResult(
+                        id = 1,
+                        diseaseName =  "Ржавчина листьев",
+                    ),
+                    LeafResult(
+                        id = 1,
+                        diseaseName =  "Мучнистая роса",
+                    ),
+                    LeafResult(
+                        id = 1,
+                        diseaseName =  "Пятнистость листьев",
+                    ),
+                    LeafResult(
+                        id = 1,
+                        diseaseName =  "Корневая гниль",
+                    ),
                 ),
                 error = null
             ),

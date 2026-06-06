@@ -1,90 +1,92 @@
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.util.Log
-import org.tensorflow.lite.task.core.BaseOptions
-import org.tensorflow.lite.task.vision.detector.ObjectDetector
-import java.util.Collections
+import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.support.common.ops.NormalizeOp
+import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.support.image.TensorImage
+import org.tensorflow.lite.support.image.ops.ResizeOp
+import java.io.FileInputStream
+import java.nio.channels.FileChannel
 
 class TomatoLeafDetector(private val context: Context) {
 
-    private var objectDetector: ObjectDetector? = null
+    private var interpreter: Interpreter? = null
 
-    init {
-        setupDetector()
+    private val imageProcessor by lazy {
+        ImageProcessor.Builder()
+            .add(ResizeOp(320, 320, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(0f, 255f))
+            .build()
     }
 
-    private fun setupDetector() {
+    init {
+        loadModel()
+    }
+
+    private fun loadModel() {
         try {
-            val baseOptions = BaseOptions.builder()
-                .setNumThreads(4)
-                .build()
+            val fileDescriptor = context.assets.openFd("detector_float16.tflite")
+            val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+            val fileChannel = inputStream.channel
+            val startOffset = fileDescriptor.startOffset
+            val declaredLength = fileDescriptor.declaredLength
+            val modelBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
 
-            val options = ObjectDetector.ObjectDetectorOptions.builder()
-                .setBaseOptions(baseOptions)
-                .setScoreThreshold(0.4f) // Уверенность детектора > 40%
-                .setMaxResults(1) // Нам нужен только один (главный) лист в кадре
-                .build()
-
-            objectDetector = ObjectDetector.createFromFileAndOptions(
-                context,
-                "detector_float16.tflite", // Имя вашего файла в assets
-                options
-            )
+            val options = Interpreter.Options().apply {
+                setNumThreads(4)
+            }
+            interpreter = Interpreter(modelBuffer, options)
+            Log.i("LeafDetector", "Interpreter детектора успешно инициализирован.")
         } catch (e: Exception) {
-            Log.e("LeafDetector", "Ошибка инициализации детектора: ${e.message}")
+            Log.e("LeafDetector", "Ошибка загрузки детектора через Interpreter: ${e.message}")
+            e.printStackTrace()
         }
     }
 
-    /**
-     * Находит лист на исходном изображении и вырезает его с безопасным отступом.
-     * Если лист не найден, возвращает исходный bitmap.
-     */
-    fun detectAndCropLeaf(srcBitmap: Bitmap): Bitmap {
-        if (objectDetector == null) return srcBitmap
+
+    fun detectLeaves(srcBitmap: Bitmap): List<RectF> {
+        val tflite = interpreter ?: return emptyList()
 
         return try {
-            val tensorImage = org.tensorflow.lite.support.image.TensorImage.fromBitmap(srcBitmap)
-            val results = objectDetector!!.detect(tensorImage)
+            var tensorImage = TensorImage.fromBitmap(srcBitmap)
+            tensorImage = imageProcessor.process(tensorImage)
 
-            if (results.isEmpty()) {
-                Log.d("LeafDetector", "Лист не обнаружен, возвращаем исходное фото")
-                return srcBitmap
+            val outputBuffer = Array(1) { Array(300) { FloatArray(6) } }
+
+            val outputs = mapOf(0 to outputBuffer)
+
+            tflite.runForMultipleInputsOutputs(arrayOf(tensorImage.buffer), outputs)
+
+            val validBoxes = mutableListOf<RectF>()
+            val predictions = outputBuffer[0]
+
+            for (i in 0 until 300) {
+                val prediction = predictions[i]
+                val score = prediction[4]
+
+                if (score > 0.516f) {
+                    val left = prediction[0] * srcBitmap.width
+                    val top = prediction[1] * srcBitmap.height
+                    val right = prediction[2] * srcBitmap.width
+                    val bottom = prediction[3] * srcBitmap.height
+
+                    validBoxes.add(RectF(left, top, right, bottom))
+                }
             }
 
-            // Берем рамку первого (лучшего) найденного объекта
-            val boundingBox = results[0].boundingBox
-
-            // Координаты бокса
-            val left = boundingBox.left.toInt()
-            val top = boundingBox.top.toInt()
-            val width = boundingBox.width().toInt()
-            val height = boundingBox.height().toInt()
-
-            // Считаем безопасный отступ (padding) 10%, чтобы края листа не обрезались
-            val paddingW = (width * 0.10f).toInt()
-            val paddingH = (height * 0.10f).toInt()
-
-            // Корректируем координаты с учетом границ оригинальной картинки
-            val cropLeft = maxOf(0, left - paddingW)
-            val cropTop = maxOf(0, top - paddingH)
-            val cropWidth = minOf(srcBitmap.width - cropLeft, width + (paddingW * 2))
-            val cropHeight = minOf(srcBitmap.height - cropTop, height + (paddingH * 2))
-
-            // Проверка на валидность размеров кропа
-            if (cropWidth > 0 && cropHeight > 0) {
-                Log.d("LeafDetector", "Лист успешно вырезан. Размер: ${cropWidth}x${cropHeight}")
-                Bitmap.createBitmap(srcBitmap, cropLeft, cropTop, cropWidth, cropHeight)
-            } else {
-                srcBitmap
-            }
+            Log.d("LeafDetector", "Успешная детекция. Найдено листьев: ${validBoxes.size}")
+            validBoxes
         } catch (e: Exception) {
-            Log.e("LeafDetector", "Ошибка при детекции/кропе: ${e.message}")
-            srcBitmap
+            Log.e("LeafDetector", "Ошибка во время детекции: ${e.message}")
+            e.printStackTrace()
+            emptyList()
         }
     }
 
     fun close() {
-        objectDetector?.close()
-        objectDetector = null
+        interpreter?.close()
+        interpreter = null
     }
 }

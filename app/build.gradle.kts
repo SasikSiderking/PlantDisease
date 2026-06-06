@@ -82,6 +82,7 @@ dependencies {
 
     implementation(libs.coil)
 
+    implementation(libs.tensorflow.lite)
     implementation(libs.tensorflow.vision)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

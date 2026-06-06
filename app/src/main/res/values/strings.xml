@@ -1,5 +1,12 @@
 <resources>
     <string name="app_name">PlantDisease</string>
     <string name="choose_image">Выбрать изображение</string>
-    <string name="chooser_title">"Выберите изображение"</string>
+    <string name="chooser_title">Выберите изображение</string>
+    <string name="title_description">Сфотографируйте или выберите фото листка томата для диагностики</string>
+    <string name="image_not_chosen">Изображение не выбрано</string>
+    <string name="processing">Анализируем изображение...</string>
+    <string name="take_your_time">Это может занять несколько секунд</string>
+    <string name="results">Результаты диагностики</string>
+    <string name="error">Ошибка</string>
+    <string name="understood">Понятно</string>
 </resources>
