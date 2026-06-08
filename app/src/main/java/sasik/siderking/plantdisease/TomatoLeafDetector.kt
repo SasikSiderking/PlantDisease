@@ -82,7 +82,7 @@ class TomatoLeafDetector(private val context: Context) {
                 val prediction = predictions[i]
                 val score = prediction[4]
 
-                if (score > 0.516f) {
+                if (score > 0.7f) {
                     val left = prediction[0] * srcBitmap.width
                     val top = prediction[1] * srcBitmap.height
                     val right = prediction[2] * srcBitmap.width

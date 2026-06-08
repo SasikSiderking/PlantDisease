@@ -454,7 +454,7 @@ fun CustomErrorDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = stringResource(R.string.understood),
+                    text = stringResource(R.string.error),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFD32F2F)
@@ -475,7 +475,7 @@ fun CustomErrorDialog(
                         containerColor = Color(0xFF4CAF50)
                     )
                 ) {
-                    Text("Понятно", color = Color.White)
+                    Text(stringResource(R.string.understood), color = Color.White)
                 }
             }
         }
